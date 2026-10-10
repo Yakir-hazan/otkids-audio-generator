@@ -40,3 +40,13 @@ node /path/to/otkids-audio.js
 ```
 
 אפשר לשנות בעזרת משתני סביבה: `LIMIT` (ברירת מחדל 0 = כל המילים, למשל `LIMIT=3` לבדיקה), `VOICE`, `MODEL`, `STYLE`, `DELAY_MS`, `OUT_DIR`, `SITE`. כמה מפתחות: מפרידים בפסיק.
+
+## הפקודה הקצרה בכלי
+
+מתחת לשדה המפתח יש עכשיו גם **פקודה קצרה** עם כפתור העתקה. היא מחליפה את המפתח בכל פעם שמדביקים מפתח חדש, ומריצה את `otkids-audio.js` שכבר נמצא ב-`$HOME`:
+
+```
+GEMINI_API_KEY='המפתח' node "$HOME/otkids-audio.js"
+```
+
+להורדת הסקריפט (פעם אחת): `curl -o "$HOME/otkids-audio.js" https://raw.githubusercontent.com/Yakir-hazan/otkids-audio-generator/main/otkids-audio.js`

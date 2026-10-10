@@ -151,6 +151,15 @@
   </section>
 
   <section>
+    <label for="outShort">הפקודה הקצרה (כשהקובץ otkids-audio.js כבר נמצא ב־$HOME)</label>
+    <textarea id="outShort" class="ltr" dir="ltr" readonly rows="4" spellcheck="false" aria-describedby="statusShort"></textarea>
+    <div class="meta"><span></span><span id="statusShort" role="status" aria-live="polite"></span></div>
+    <button class="btn" id="copyShort" type="button" disabled>העתק את הפקודה הקצרה</button>
+    <p class="hint">פעם אחת בלבד, להורדת הסקריפט (בלי מפתח בתוכו): <code dir="ltr">curl -o "$HOME/otkids-audio.js" https://raw.githubusercontent.com/Yakir-hazan/otkids-audio-generator/main/otkids-audio.js</code></p>
+    <div class="warn">הפקודה כוללת את המפתח. אל תעלה אותה לגיט ואל תשלח אותה הלאה.</div>
+  </section>
+
+  <section>
     <label for="out">הפקודה להדבקה בטרמינל</label>
     <textarea id="out" readonly rows="10" spellcheck="false" aria-describedby="status"></textarea>
     <div class="meta"><span id="size"></span><span id="status" role="status" aria-live="polite"></span></div>
@@ -458,15 +467,31 @@ function build() {
   $('copy').disabled = !ready;
   $('size').innerHTML = ready ? cmd.split('\n').length + ' שורות, <bdi dir="ltr">' + (new Blob([cmd]).size / 1024).toFixed(1) + ' KB</bdi>' : '';
   $('status').textContent = '';
+
+  const parts = ["GEMINI_API_KEY='" + parsed.keys.join(',') + "'"];
+  if (test) parts.push('LIMIT=' + TEST_COUNT);
+  if (delayMs !== 10000) parts.push('DELAY_MS=' + delayMs);
+  if (folder !== DEFAULT_FOLDER) parts.push("OUT_DIR='" + folder + "'");
+  if (voice !== 'Kore' && /^[A-Za-z0-9_.:-]+$/.test(voice)) parts.push("VOICE='" + voice + "'");
+  if (model !== 'gemini-3.1-flash-tts-preview' && /^[A-Za-z0-9_.:-]+$/.test(model)) parts.push("MODEL='" + model + "'");
+  if (site && site !== 'https://otkids.vercel.app') parts.push("SITE='" + site + "'");
+  if (style && !/['\\$`\n]/.test(style)) parts.push("STYLE='" + style + "'");
+  const shortCmd = parts.join(' ') + ' node "$HOME/otkids-audio.js"';
+  $('outShort').value = ready ? shortCmd : '';
+  $('outShort').placeholder = 'הכנס מפתח למעלה, והפקודה הקצרה תופיע כאן.';
+  $('copyShort').disabled = !ready;
+  $('statusShort').textContent = '';
 }
 
-async function copyCmd() {
-  const ta = $('out');
+async function copyCmd(outId, statusId) {
+  outId = outId || 'out';
+  statusId = statusId || 'status';
+  const ta = $(outId);
   const text = ta.value;
   if (!text) return;
   try {
     await navigator.clipboard.writeText(text);
-    $('status').textContent = 'הועתק';
+    $(statusId).textContent = 'הועתק';
     return;
   } catch (e) { /* fall through */ }
   ta.focus();
@@ -474,13 +499,14 @@ async function copyCmd() {
   ta.setSelectionRange(0, text.length);
   let done = false;
   try { done = document.execCommand('copy'); } catch (e) { done = false; }
-  $('status').textContent = done ? 'הועתק' : 'ההעתקה נחסמה. הטקסט מסומן, לחץ עליו והעתק ידנית.';
+  $(statusId).textContent = done ? 'הועתק' : 'ההעתקה נחסמה. הטקסט מסומן, לחץ עליו והעתק ידנית.';
 }
 
 ['keys', 'voice', 'model', 'delay', 'folder', 'site', 'style'].forEach(function (id) { $(id).addEventListener('input', build); });
 $('modeAll').addEventListener('change', build);
 $('modeTest').addEventListener('change', build);
-$('copy').addEventListener('click', copyCmd);
+$('copy').addEventListener('click', function () { copyCmd('out', 'status'); });
+$('copyShort').addEventListener('click', function () { copyCmd('outShort', 'statusShort'); });
 build();
 </script>
 </body>
