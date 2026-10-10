@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>מחולל שמע לאותקידס</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F2F5F9;
+    --panel: #FFFFFF;
+    --ink: #16202E;
+    --muted: #5B6778;
+    --line: #D5DCE6;
+    --accent: #0B6F7A;
+    --accent-ink: #FFFFFF;
+    --warn-bg: #FFF1D6;
+    --warn-ink: #6B4300;
+    --code-bg: #0F1722;
+    --code-ink: #D8E3F2;
+    --danger: #B3261E;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0E141D; --panel: #17202C; --ink: #E7EDF5; --muted: #98A4B5; --line: #2B3646;
+      --accent: #3FB6C3; --accent-ink: #06232A; --warn-bg: #3A2D12; --warn-ink: #F3D9A2;
+      --code-bg: #0A0F16; --code-ink: #D8E3F2; --danger: #FF8A80;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0E141D; --panel: #17202C; --ink: #E7EDF5; --muted: #98A4B5; --line: #2B3646;
+    --accent: #3FB6C3; --accent-ink: #06232A; --warn-bg: #3A2D12; --warn-ink: #F3D9A2;
+    --code-bg: #0A0F16; --code-ink: #D8E3F2; --danger: #FF8A80;
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: 'Rubik', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+    font-size: 16px; line-height: 1.55;
+  }
+  main { max-width: 640px; margin: 0 auto; padding: 22px 16px 48px; }
+  h1 { font-size: 24px; line-height: 1.2; margin: 0 0 6px; font-weight: 700; }
+  .lead { margin: 0 0 22px; color: var(--muted); }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+  label, .label { display: block; font-weight: 500; margin-bottom: 6px; }
+  .hint { margin: 6px 0 0; font-size: 14px; color: var(--muted); }
+  textarea, input[type="text"], input[type="number"] {
+    width: 100%; font: inherit; color: var(--ink); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+  }
+  textarea:focus-visible, input:focus-visible, button:focus-visible, summary:focus-visible {
+    outline: 3px solid var(--accent); outline-offset: 2px;
+  }
+  .ltr { direction: ltr; text-align: left; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 16px; }
+  #keys { min-height: 88px; resize: vertical; }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg label {
+    margin: 0; text-align: center; padding: 11px 8px; border: 1px solid var(--line);
+    border-radius: 10px; cursor: pointer; background: var(--bg); font-weight: 500;
+  }
+  .seg input:checked + label { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .seg input:focus-visible + label { outline: 3px solid var(--accent); outline-offset: 2px; }
+  details { margin: 0; }
+  summary { cursor: pointer; font-weight: 500; min-height: 44px; display: flex; align-items: center; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  .grid2 .wide { grid-column: 1 / -1; }
+  .field label { font-weight: 400; font-size: 14px; color: var(--muted); }
+  #out { direction: ltr; text-align: left; min-height: 200px; resize: vertical; background: var(--code-bg); color: var(--code-ink); border-color: transparent; font-size: 16px; line-height: 1.45; white-space: pre; overflow: auto; }
+  .btn {
+    width: 100%; margin-top: 12px; font: inherit; font-weight: 700; padding: 14px 16px;
+    border: 0; border-radius: 12px; background: var(--accent); color: var(--accent-ink); cursor: pointer;
+  }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .meta { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; color: var(--muted); margin-top: 8px; }
+  .warn { background: var(--warn-bg); color: var(--warn-ink); border-radius: 10px; padding: 10px 12px; font-size: 14px; margin-top: 12px; }
+  .err { color: var(--danger); font-size: 14px; margin: 6px 0 0; }
+  #status { min-height: 1.4em; font-weight: 500; }
+  .words { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; margin-top: 12px; }
+  .w { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font-size: 14px; display: flex; justify-content: space-between; gap: 6px; }
+  .w code { direction: ltr; color: var(--muted); font-size: 12px; }
+  .steps { margin: 0; padding-inline-start: 20px; }
+  .steps li { margin-bottom: 4px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>מחולל שמע לאותקידס</h1>
+  <p class="lead">מכניס את המפתח לסקריפט אחד שמייצר קובץ שמע לכל מילה של אותקידס, ומחזיר פקודה להדבקה בטרמינל באייפון.</p>
+
+  <section>
+    <label for="keys">מפתח Gemini</label>
+    <textarea id="keys" class="ltr" dir="ltr" rows="3" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="הדבק כאן מפתח"></textarea>
+    <p class="hint">אפשר כמה מפתחות, אחד בכל שורה. כשמפתח מגיע למכסה או נדחה, הסקריפט עובר לבא אחריו.</p>
+    <p class="hint">המפתח לא נשמר בשום מקום, והדף לא שולח אותו לשום מקום.</p>
+    <p class="err" id="keyErr" hidden></p>
+  </section>
+
+  <section>
+    <div class="label" id="modeLabel">מה להפיק</div>
+    <div class="seg" role="radiogroup" aria-labelledby="modeLabel">
+      <input type="radio" name="mode" id="modeAll" value="all" checked>
+      <label for="modeAll"><span id="allText">כל המילים</span></label>
+      <input type="radio" name="mode" id="modeTest" value="test">
+      <label for="modeTest">בדיקה: 3 מילים</label>
+    </div>
+    <p class="hint">קבצים שכבר קיימים בתיקייה מדולגים, אז אפשר להריץ שוב אחרי כשל.</p>
+  </section>
+
+  <section>
+    <details>
+      <summary>הגדרות</summary>
+      <div class="grid2">
+        <div class="field">
+          <label for="voice">קול</label>
+          <input type="text" id="voice" class="ltr" dir="ltr" value="Kore" autocomplete="off" autocapitalize="none" spellcheck="false">
+        </div>
+        <div class="field">
+          <label for="delay">השהיה בין בקשות (שניות)</label>
+          <input type="number" id="delay" class="ltr" dir="ltr" value="10" min="0" step="1" inputmode="numeric">
+        </div>
+        <div class="field wide">
+          <label for="model">מודל</label>
+          <input type="text" id="model" class="ltr" dir="ltr" value="gemini-3.1-flash-tts-preview" autocomplete="off" autocapitalize="none" spellcheck="false">
+        </div>
+        <div class="field wide">
+          <label for="folder">תיקיית פלט (יחסית לתיקייה שבה אתה עומד בטרמינל)</label>
+          <input type="text" id="folder" class="ltr" dir="ltr" value="audio/words" autocomplete="off" autocapitalize="none" spellcheck="false">
+          <p class="err" id="folderErr" hidden></p>
+        </div>
+        <div class="field wide">
+          <label for="site">כתובת האתר של אותקידס (משם יורדת רשימת המילים העדכנית; ריק = בלי הורדה)</label>
+          <input type="text" id="site" class="ltr" dir="ltr" value="https://otkids.vercel.app" autocomplete="off" autocapitalize="none" spellcheck="false">
+          <p class="err" id="siteErr" hidden></p>
+        </div>
+        <div class="field wide">
+          <label for="style">הנחיית הקראה לפני כל מילה (אפשר להשאיר ריק)</label>
+          <input type="text" id="style" class="ltr" dir="ltr" value="" autocomplete="off" spellcheck="false">
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <section>
+    <label for="out">הפקודה להדבקה בטרמינל</label>
+    <textarea id="out" readonly rows="10" spellcheck="false" aria-describedby="status"></textarea>
+    <div class="meta"><span id="size"></span><span id="status" role="status" aria-live="polite"></span></div>
+    <button class="btn" id="copy" type="button" disabled>העתק את הפקודה</button>
+    <div class="warn">הפקודה כוללת את המפתח. אל תעלה אותה לגיט ואל תשלח אותה הלאה.</div>
+  </section>
+
+  <section>
+    <div class="label">אחרי ההדבקה</div>
+    <ol class="steps">
+      <li>אפשר להריץ מכל תיקייה בטרמינל. הקבצים נוצרים בתיקייה <code dir="ltr">audio/words</code> שמתחת לתיקייה שבה אתה עומד. כדי שיישמרו ישר בפרויקט, עמוד קודם בתיקיית הפרויקט, או כתוב נתיב מלא בשדה "תיקיית פלט".</li>
+      <li>הדבק ולחץ Enter. הפקודה שומרת את הסקריפט בתיקיית הבית (מחוץ לפרויקט, כדי שהמפתח לא ייכנס לגיט) ומריצה אותו.</li>
+      <li>את רשימת המילים הסקריפט מוצא לבד: קודם <code dir="ltr">js/content/bank.js</code> בתיקייה שבה אתה עומד, ואם אין, מהאתר החי של אותקידס, ואם גם זה לא זמין, מהרשימה המוטמעת בדף. השורה <code dir="ltr">word source</code> בפלט אומרת מאיפה נלקחה.</li>
+      <li>כל קובץ נשמר בשם <code dir="ltr">&lt;id&gt;.wav</code>, וה־id הוא אותו id מ־bank.js.</li>
+      <li>אם משהו נכשל, מריצים שוב מאותה תיקייה <code dir="ltr">node "$HOME/otkids-audio.js"</code> והסקריפט ממשיך מאיפה שעצר.</li>
+      <li>בסוף מוחקים את הסקריפט, כי המפתח בתוכו: <code dir="ltr">rm "$HOME/otkids-audio.js"</code></li>
+    </ol>
+  </section>
+
+  <section>
+    <details>
+      <summary id="wordsSummary">המילים שייכנסו</summary>
+      <div class="words" id="words"></div>
+    </details>
+  </section>
+</main>
+
+<script type="text/plain" id="tpl">
+// otkids-audio.js: one WAV file per word of the otkids bank.js (Gemini TTS). File name = word id.
+// Node 16+, no dependencies. Existing files are skipped, so it is safe to run again after a failure.
+'use strict';
+const https = require('https');
+const fs = require('fs');
+const path = require('path');
+
+const KEYS = __KEYS__;
+const MODEL = __MODEL__;
+const VOICE = __VOICE__;
+const STYLE = __STYLE__;
+const DELAY_MS = __DELAY__;
+const OUT_DIR = __OUT__;
+const LIMIT = __LIMIT__;
+const SITE = __SITE__;
+const SNAPSHOT = __WORDS__;
+
+// Word list: 1) js/content/bank.js in the folder you run this from, 2) the live otkids site, 3) the snapshot above.
+// bank.js is only READ AS TEXT and parsed with a pattern. Nothing from it is ever executed.
+function parseBank(src) {
+  const start = src.indexOf('export const WORDS = [');
+  if (start < 0) throw new Error('WORDS not found');
+  const end = src.indexOf('\n];', start);
+  if (end < 0) throw new Error('end of WORDS not found');
+  const block = src.slice(start, end);
+  const words = [];
+  const re = /\bid:\s*'([^']+)'\s*,\s*text:\s*'([^']+)'/g;
+  let m;
+  while ((m = re.exec(block))) words.push([m[1], m[2]]);
+  const ids = (block.match(/\bid:\s*'/g) || []).length;
+  if (!words.length || words.length !== ids) throw new Error('could not read every word (' + words.length + ' of ' + ids + ')');
+  const seen = {};
+  words.forEach((w) => {
+    if (!/^[A-Za-z0-9_]+$/.test(w[0])) throw new Error('unsafe id: ' + w[0]);
+    if (seen[w[0]]) throw new Error('duplicate id: ' + w[0]);
+    seen[w[0]] = 1;
+  });
+  return words;
+}
+
+function download(url, redirects) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, { headers: { 'User-Agent': 'otkids-audio-generator' } }, (res) => {
+      if ([301, 302, 307, 308].indexOf(res.statusCode) !== -1 && res.headers.location && redirects < 3) {
+        res.resume();
+        resolve(download(new URL(res.headers.location, url).href, redirects + 1));
+        return;
+      }
+      if (res.statusCode !== 200) { res.resume(); reject(new Error('HTTP ' + res.statusCode)); return; }
+      let data = '';
+      res.setEncoding('utf8');
+      res.on('data', (c) => { data += c; if (data.length > 1000000) req.destroy(new Error('file too large')); });
+      res.on('end', () => resolve(data));
+    });
+    req.on('error', reject);
+    req.setTimeout(15000, () => req.destroy(new Error('timeout')));
+  });
+}
+
+async function loadWords() {
+  const notes = [];
+  const bankPath = path.join(process.cwd(), 'js', 'content', 'bank.js');
+  if (fs.existsSync(bankPath)) {
+    try { return { words: parseBank(fs.readFileSync(bankPath, 'utf8')), source: 'local file ' + bankPath, notes: notes }; }
+    catch (e) { notes.push('local bank.js not usable: ' + e.message); }
+  }
+  if (SITE) {
+    const url = SITE.replace(/\/+$/, '') + '/js/content/bank.js';
+    try { return { words: parseBank(await download(url, 0)), source: 'live site ' + url, notes: notes }; }
+    catch (e) { notes.push('could not use ' + url + ': ' + e.message); }
+  }
+  return { words: SNAPSHOT, source: 'embedded snapshot (may be out of date)', notes: notes };
+}
+
+let keyIdx = 0;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function request(text) {
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify({
+      contents: [{ parts: [{ text: STYLE ? STYLE + ' ' + text : text }] }],
+      generationConfig: {
+        responseModalities: ['AUDIO'],
+        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICE } } }
+      }
+    });
+    const req = https.request({
+      hostname: 'generativelanguage.googleapis.com',
+      path: '/v1beta/models/' + encodeURIComponent(MODEL) + ':generateContent',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body),
+        'x-goog-api-key': KEYS[keyIdx]
+      }
+    }, (res) => {
+      let data = '';
+      res.setEncoding('utf8');
+      res.on('data', (c) => { data += c; });
+      res.on('end', () => resolve({ status: res.statusCode, body: data }));
+    });
+    req.on('error', reject);
+    req.setTimeout(60000, () => req.destroy(new Error('timeout')));
+    req.write(body);
+    req.end();
+  });
+}
+
+function retryDelay(body, attempt) {
+  const m = /"retryDelay"\s*:\s*"(\d+(?:\.\d+)?)s"/.exec(body || '');
+  return m ? Math.ceil(Number(m[1]) * 1000) + 1000 : 15000 * attempt;
+}
+
+async function synth(text) {
+  let last = 'unknown error';
+  let switches = 0;
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    let wait = 0;
+    try {
+      const r = await request(text);
+      if (r.status === 200) {
+        const j = JSON.parse(r.body);
+        const parts = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];
+        const p = parts.find((x) => x.inlineData && x.inlineData.data);
+        if (p) {
+          const m = /rate=(\d+)/.exec(p.inlineData.mimeType || '');
+          return { pcm: Buffer.from(p.inlineData.data, 'base64'), rate: m ? Number(m[1]) : 24000 };
+        }
+        last = 'no audio in response';
+        wait = 5000 * attempt;
+      } else {
+        let msg = r.body.slice(0, 200);
+        try { msg = JSON.parse(r.body).error.message || msg; } catch (e) { /* keep raw */ }
+        last = 'HTTP ' + r.status + ': ' + msg;
+        const more = KEYS.length > 1 && switches < KEYS.length - 1;
+        if ((r.status === 429 || r.status === 401 || r.status === 403) && more) {
+          switches++;
+          keyIdx = (keyIdx + 1) % KEYS.length;
+          attempt--;
+          console.log('    switching to key ' + (keyIdx + 1) + ' of ' + KEYS.length + ' (' + last.slice(0, 70) + ')');
+          continue;
+        }
+        if (r.status === 429 || r.status >= 500) wait = retryDelay(r.body, attempt);
+        else return { error: last, fatal: r.status !== 400 };
+      }
+    } catch (e) {
+      last = 'network: ' + e.message;
+      wait = 5000 * attempt;
+    }
+    if (attempt < 4) {
+      console.log('    attempt ' + attempt + ' failed (' + last.slice(0, 80) + '), retrying in ' + Math.round(wait / 1000) + 's');
+      await sleep(wait);
+    }
+  }
+  return { error: last, fatal: false };
+}
+
+function wav(pcm, rate) {
+  const h = Buffer.alloc(44);
+  h.write('RIFF', 0); h.writeUInt32LE(pcm.length + 36, 4); h.write('WAVE', 8); h.write('fmt ', 12);
+  h.writeUInt32LE(16, 16); h.writeUInt16LE(1, 20); h.writeUInt16LE(1, 22);
+  h.writeUInt32LE(rate, 24); h.writeUInt32LE(rate * 2, 28); h.writeUInt16LE(2, 32); h.writeUInt16LE(16, 34);
+  h.write('data', 36); h.writeUInt32LE(pcm.length, 40);
+  return Buffer.concat([h, pcm]);
+}
+
+async function main() {
+  if (!KEYS.length) { console.error('No API key'); return 2; }
+  fs.mkdirSync(OUT_DIR, { recursive: true });
+  const loaded = await loadWords();
+  const list = LIMIT > 0 ? loaded.words.slice(0, LIMIT) : loaded.words;
+  loaded.notes.forEach((n) => console.log('note: ' + n));
+  console.log('word source: ' + loaded.source);
+  console.log('words: ' + list.length + ' | voice: ' + VOICE + ' | model: ' + MODEL + ' | keys: ' + KEYS.length);
+  console.log('output: ' + path.resolve(OUT_DIR) + '\n');
+  let ok = 0;
+  let skipped = 0;
+  const failed = [];
+  let called = false;
+  for (let i = 0; i < list.length; i++) {
+    const id = list[i][0];
+    const text = list[i][1];
+    const tag = '[' + (i + 1) + '/' + list.length + ']';
+    const file = path.join(OUT_DIR, id + '.wav');
+    if (fs.existsSync(file) && fs.statSync(file).size > 44) { console.log('exists ' + tag + ' ' + id); skipped++; continue; }
+    if (called && DELAY_MS > 0) await sleep(DELAY_MS);
+    called = true;
+    const out = await synth(text);
+    if (out.error) {
+      console.error('ERR ' + tag + ' ' + id + ' (' + text + '): ' + out.error);
+      failed.push({ id: id, text: text, error: out.error });
+      if (out.fatal) { console.error('This will not fix itself by retrying. Stopping. Check the key / model name and run again.'); break; }
+      continue;
+    }
+    fs.writeFileSync(file + '.part', wav(out.pcm, out.rate));
+    fs.renameSync(file + '.part', file);
+    console.log('OK ' + tag + ' ' + id + ' (' + text + ')');
+    ok++;
+  }
+  console.log('\nok: ' + ok + ' | skipped: ' + skipped + ' | failed: ' + failed.length);
+  if (failed.length) {
+    fs.writeFileSync(path.join(OUT_DIR, '_errors.json'), JSON.stringify(failed, null, 2));
+    console.log('errors saved to ' + path.join(OUT_DIR, '_errors.json') + ' (run again to retry)');
+  }
+  console.log('done: ' + path.resolve(OUT_DIR));
+  return failed.length ? 1 : 0;
+}
+
+main().then((c) => process.exit(c)).catch((e) => { console.error('Fatal: ' + e.message); process.exit(3); });
+</script>
+
+<script>
+// Snapshot of WORDS from js/content/bank.js in the otkids repo (main branch). [id, text]. Used by the generated script only when bank.js is not found.
+const WORDS = [["motos","מטוס"],["mafteach","מפתח"],["melafefon","מלפפון"],["shemesh","שמש"],["shaon","שעון"],["shokolad","שוקולד"],["bayit","בית"],["balon","בלון"],["banana","בננה"],["dag","דג"],["dov","דוב"],["delet","דלת"],["pil","פיל"],["parpar","פרפר"],["pitza","פיצה"],["tapuach","תפוח"],["tut","תות"],["tuki","תוכי"],["kelev","כלב"],["kadur","כדור"],["kova","כובע"],["lev","לב"],["limon","לימון"],["lechem","לחם"],["nachash","נחש"],["naal","נעל"],["ner","נר"],["sus","סוס"],["sefer","ספר"],["sukaria","סוכריה"],["gamal","גמל"],["gezer","גזר"],["glida","גלידה"],["zebra","זברה"],["zvuv","זבוב"],["zeev","זאב"],["chatul","חתול"],["chalav","חלב"],["chalon","חלון"],["rakevet","רכבת"],["robot","רובוט"],["ramzor","רמזור"],["yanshuf","ינשוף"],["yona","יונה"],["yareach","ירח"],["televizya","טלוויזיה"],["traktor","טרקטור"],["tavas","טווס"],["tzav","צב"],["tzfardea","צפרדע"],["tziif","צעיף"],["kof","קוף"],["keshet","קשת"],["kerach","קרח"],["har","הר"],["hamburger","המבורגר"],["hipopotam","היפופוטם"],["vered","ורד"],["wafel","וופל"],["aryeh","אריה"],["arnav","ארנב"],["avatiach","אבטיח"],["anan","ענן"],["achbar","עכבר"],["agala","עגלה"]];
+const $ = (id) => document.getElementById(id);
+const TPL = $('tpl').textContent.replace(/^\n/, '');
+const TEST_COUNT = 3;
+const DEFAULT_FOLDER = 'audio/words';
+
+$('allText').textContent = 'כל ' + WORDS.length + ' המילים';
+$('wordsSummary').textContent = WORDS.length + ' המילים שייכנסו';
+$('words').innerHTML = WORDS.map(function (w) {
+  return '<div class="w"><span>' + w[1] + '</span><code>' + w[0] + '</code></div>';
+}).join('');
+
+function parseKeys(raw) {
+  const keys = [];
+  let bad = 0;
+  raw.split('\n').map(function (s) { return s.trim(); }).filter(Boolean).forEach(function (k) {
+    if (/\s/.test(k) || /["'`\\$]/.test(k)) { bad++; return; }
+    if (keys.indexOf(k) === -1) keys.push(k);
+  });
+  return { keys: keys, bad: bad };
+}
+
+function build() {
+  const parsed = parseKeys($('keys').value);
+  const err = $('keyErr');
+  if (parsed.bad) { err.hidden = false; err.textContent = 'יש שורה שלא נראית כמו מפתח (רווח או מרכאות בתוכה), והיא לא נכללה.'; }
+  else err.hidden = true;
+
+  const test = $('modeTest').checked;
+  const delaySec = Number($('delay').value);
+  const delayMs = Math.max(0, Math.round((isFinite(delaySec) ? delaySec : 10) * 1000));
+  let folder = $('folder').value.trim() || DEFAULT_FOLDER;
+  const folderBad = !/^[A-Za-z0-9_.\/-]+$/.test(folder) || folder.indexOf('..') !== -1;
+  if (folderBad) folder = DEFAULT_FOLDER;
+  $('folderErr').hidden = !folderBad;
+  if (folderBad) $('folderErr').textContent = 'שם התיקייה יכול להכיל רק אותיות באנגלית, ספרות, קו תחתון, נקודה וקו נטוי. משתמש ב־' + DEFAULT_FOLDER + '.';
+  const voice = $('voice').value.trim() || 'Kore';
+  const model = $('model').value.trim() || 'gemini-3.1-flash-tts-preview';
+  const style = $('style').value.trim();
+  let site = $('site').value.trim();
+  const siteBad = site !== '' && !/^https:\/\/[A-Za-z0-9.-]+(:\d+)?(\/[A-Za-z0-9._~\/-]*)?$/.test(site);
+  if (siteBad) site = '';
+  $('siteErr').hidden = !siteBad;
+  if (siteBad) $('siteErr').textContent = 'הכתובת חייבת להתחיל ב־https:// ולהכיל רק תווים רגילים. ההורדה מהאתר כבויה.';
+
+  const map = {
+    __KEYS__: JSON.stringify(parsed.keys),
+    __MODEL__: JSON.stringify(model),
+    __VOICE__: JSON.stringify(voice),
+    __STYLE__: JSON.stringify(style),
+    __DELAY__: String(delayMs),
+    __OUT__: JSON.stringify(folder),
+    __LIMIT__: String(test ? TEST_COUNT : 0),
+    __SITE__: JSON.stringify(site),
+    __WORDS__: JSON.stringify(WORDS)
+  };
+  let script = TPL;
+  Object.keys(map).forEach(function (k) { script = script.split(k).join(map[k]); });
+
+  const cmd = "cat > \"$HOME/otkids-audio.js\" <<'OTKIDS_EOF'\n" + script.replace(/\n+$/, '') + "\nOTKIDS_EOF\nnode \"$HOME/otkids-audio.js\"\n";
+  const ready = parsed.keys.length > 0;
+  $('out').value = ready ? cmd : '';
+  $('out').placeholder = 'הכנס מפתח למעלה, והפקודה תופיע כאן.';
+  $('copy').disabled = !ready;
+  $('size').innerHTML = ready ? cmd.split('\n').length + ' שורות, <bdi dir="ltr">' + (new Blob([cmd]).size / 1024).toFixed(1) + ' KB</bdi>' : '';
+  $('status').textContent = '';
+}
+
+async function copyCmd() {
+  const ta = $('out');
+  const text = ta.value;
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    $('status').textContent = 'הועתק';
+    return;
+  } catch (e) { /* fall through */ }
+  ta.focus();
+  ta.select();
+  ta.setSelectionRange(0, text.length);
+  let done = false;
+  try { done = document.execCommand('copy'); } catch (e) { done = false; }
+  $('status').textContent = done ? 'הועתק' : 'ההעתקה נחסמה. הטקסט מסומן, לחץ עליו והעתק ידנית.';
+}
+
+['keys', 'voice', 'model', 'delay', 'folder', 'site', 'style'].forEach(function (id) { $(id).addEventListener('input', build); });
+$('modeAll').addEventListener('change', build);
+$('modeTest').addEventListener('change', build);
+$('copy').addEventListener('click', copyCmd);
+build();
+</script>
+</body>
+</html>
