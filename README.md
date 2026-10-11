@@ -50,3 +50,10 @@ GEMINI_API_KEY='המפתח' node "$HOME/otkids-audio.js"
 ```
 
 להורדת הסקריפט (פעם אחת): `curl -o "$HOME/otkids-audio.js" https://raw.githubusercontent.com/Yakir-hazan/otkids-audio-generator/main/otkids-audio.js`
+
+## מודל gemini-3.8 וקול נשי
+
+- ברירת המחדל עכשיו: מודל `gemini-3.8-flash-tts`, קול `Sulafat` (נשי, חם).
+- הטון (באנגלית) נשלח בשדה נפרד (`speech_metadata.style`) ולא בתוך הטקסט. מודלים ישנים (`gemini-3.1-flash-tts-preview`) עדיין נתמכים והטון נשלח להם כתחילית.
+- קולות נשיים מובנים: `Sulafat`, `Vindemiatrix`, `Leda`, `Aoede`, `Zephyr`.
+- להצגת הקולות הזמינים (ספריית הקולות): `GEMINI_API_KEY='...' node "$HOME/otkids-audio.js" voices`. אפשר לסנן: `VOICE_GENDER=female VOICE_LANG=he-IL VOICE_SEARCH=warm`.

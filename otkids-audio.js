@@ -1,5 +1,6 @@
 // otkids-audio.js: one WAV file per word of the otkids bank.js (Gemini TTS). File name = word id.
-// Key comes from the GEMINI_API_KEY env var (several keys: comma separated). Optional env: LIMIT (0 = all), VOICE, MODEL, STYLE, DELAY_MS, OUT_DIR, SITE.
+// Key comes from the GEMINI_API_KEY env var (several keys: comma separated). Optional env: LIMIT (0 = all), VOICE, MODEL, STYLE (tone, English), DELAY_MS, OUT_DIR, SITE.
+// List voices: node otkids-audio.js voices   (VOICE_GENDER=female|male, VOICE_LANG=he-IL, VOICE_SEARCH=warm)
 // Node 16+, no dependencies. Existing files are skipped, so it is safe to run again after a failure.
 'use strict';
 const https = require('https');
@@ -7,8 +8,8 @@ const fs = require('fs');
 const path = require('path');
 
 const KEYS = (process.env.GEMINI_API_KEY || '').split(',').map((s) => s.trim()).filter(Boolean);
-const MODEL = process.env.MODEL || "gemini-3.1-flash-tts-preview";
-const VOICE = process.env.VOICE || "Kore";
+const MODEL = process.env.MODEL || "gemini-3.8-flash-tts";
+const VOICE = process.env.VOICE || "Sulafat";
 const STYLE = process.env.STYLE || "";
 const DELAY_MS = Number(process.env.DELAY_MS || 10000);
 const OUT_DIR = process.env.OUT_DIR || "audio/words";
@@ -73,20 +74,31 @@ async function loadWords() {
   return { words: SNAPSHOT, source: 'embedded snapshot (may be out of date)', notes: notes };
 }
 
+const NEW_API = !/gemini-(2\.5|3\.1)/.test(MODEL);
+const BASE = new URL(process.env.API_BASE || 'https://generativelanguage.googleapis.com');
+const LIB = BASE.protocol === 'http:' ? require('http') : https;
 let keyIdx = 0;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function request(text) {
   return new Promise((resolve, reject) => {
-    const body = JSON.stringify({
-      contents: [{ parts: [{ text: STYLE ? STYLE + ' ' + text : text }] }],
+    // gemini-3.8 TTS: text is the verbatim transcript, the tone goes in speech_metadata.style.
+    // Older models (3.1 preview, 2.5): the style is a prefix of the text.
+    const part = { text: NEW_API ? text : (STYLE ? STYLE + ' ' + text : text) };
+    if (NEW_API && STYLE) part.speech_metadata = { style: STYLE };
+    const body = JSON.stringify(NEW_API ? {
+      contents: [{ role: 'user', parts: [part] }],
+      generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { voice: VOICE } } }
+    } : {
+      contents: [{ parts: [part] }],
       generationConfig: {
         responseModalities: ['AUDIO'],
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICE } } }
       }
     });
-    const req = https.request({
-      hostname: 'generativelanguage.googleapis.com',
+    const req = LIB.request({
+      hostname: BASE.hostname,
+      port: BASE.port || undefined,
       path: '/v1beta/models/' + encodeURIComponent(MODEL) + ':generateContent',
       method: 'POST',
       headers: {
@@ -125,7 +137,8 @@ async function synth(text) {
         const p = parts.find((x) => x.inlineData && x.inlineData.data);
         if (p) {
           const m = /rate=(\d+)/.exec(p.inlineData.mimeType || '');
-          return { pcm: Buffer.from(p.inlineData.data, 'base64'), rate: m ? Number(m[1]) : 24000 };
+          const raw = Buffer.from(p.inlineData.data, 'base64');
+          return { pcm: raw, rate: m ? Number(m[1]) : 24000, isWav: raw.length > 44 && raw.toString('ascii', 0, 4) === 'RIFF' };
         }
         last = 'no audio in response';
         wait = 5000 * attempt;
@@ -165,8 +178,48 @@ function wav(pcm, rate) {
   return Buffer.concat([h, pcm]);
 }
 
+function getJson(pathAndQuery) {
+  return new Promise((resolve, reject) => {
+    const req = LIB.get({ hostname: BASE.hostname, port: BASE.port || undefined, path: pathAndQuery, headers: { 'x-goog-api-key': KEYS[0] } }, (res) => {
+      let data = '';
+      res.setEncoding('utf8');
+      res.on('data', (c) => { data += c; });
+      res.on('end', () => {
+        if (res.statusCode !== 200) { reject(new Error('HTTP ' + res.statusCode + ': ' + data.slice(0, 200))); return; }
+        try { resolve(JSON.parse(data)); } catch (e) { reject(e); }
+      });
+    });
+    req.on('error', reject);
+    req.setTimeout(30000, () => req.destroy(new Error('timeout')));
+  });
+}
+
+// node otkids-audio.js voices   (env: VOICE_GENDER=female|male|neutral, VOICE_LANG=he-IL, VOICE_SEARCH=warm)
+async function listVoices() {
+  const gender = process.env.VOICE_GENDER === undefined ? 'female' : process.env.VOICE_GENDER;
+  let token = '';
+  let count = 0;
+  for (let page = 0; page < 20; page++) {
+    const q = ['page_size=200'];
+    if (gender) q.push('gender=' + encodeURIComponent(gender));
+    if (process.env.VOICE_LANG) q.push('language_code=' + encodeURIComponent(process.env.VOICE_LANG));
+    if (process.env.VOICE_SEARCH) q.push('search=' + encodeURIComponent(process.env.VOICE_SEARCH));
+    if (token) q.push('page_token=' + encodeURIComponent(token));
+    const j = await getJson('/v1beta/voices?' + q.join('&'));
+    (j.voices || []).forEach((v) => {
+      count++;
+      console.log((v.id || v.name) + ' | ' + (v.displayName || v.display_name || '') + ' (' + [v.languageCode || v.language_code, v.accent, v.gender, v.pitch].filter(Boolean).join(', ') + ') ' + (v.description || ''));
+    });
+    token = j.nextPageToken || j.next_page_token || '';
+    if (!token) break;
+  }
+  console.log('\nvoices: ' + count + '. Use the first column: VOICE=<id> (prebuilt names such as Sulafat also work).');
+  return 0;
+}
+
 async function main() {
   if (!KEYS.length) { console.error('Missing key. Run: export GEMINI_API_KEY="your-key"'); return 2; }
+  if (process.argv[2] === 'voices') return listVoices();
   fs.mkdirSync(OUT_DIR, { recursive: true });
   const loaded = await loadWords();
   const list = LIMIT > 0 ? loaded.words.slice(0, LIMIT) : loaded.words;
@@ -193,7 +246,7 @@ async function main() {
       if (out.fatal) { console.error('This will not fix itself by retrying. Stopping. Check the key / model name and run again.'); break; }
       continue;
     }
-    fs.writeFileSync(file + '.part', wav(out.pcm, out.rate));
+    fs.writeFileSync(file + '.part', out.isWav ? out.pcm : wav(out.pcm, out.rate));
     fs.renameSync(file + '.part', file);
     console.log('OK ' + tag + ' ' + id + ' (' + text + ')');
     ok++;
