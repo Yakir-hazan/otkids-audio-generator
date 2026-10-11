@@ -151,7 +151,15 @@
   </section>
 
   <section>
-    <label for="outShort">הפקודה הקצרה (כשהקובץ otkids-audio.js כבר נמצא ב־$HOME)</label>
+    <label for="outCd">שלב 1: ניווט לתיקיית הפרויקט (פעם אחת בכל פתיחה של הטרמינל)</label>
+    <textarea id="outCd" class="ltr" dir="ltr" readonly rows="4" spellcheck="false" aria-describedby="statusCd"></textarea>
+    <div class="meta"><span></span><span id="statusCd" role="status" aria-live="polite"></span></div>
+    <button class="btn" id="copyCd" type="button">העתק את פקודת הניווט</button>
+    <p class="hint">בסוף הפלט צריך להופיע <code dir="ltr">.../הורדות/otkids-main</code>, בלי <code dir="ltr">.Trash</code>.</p>
+  </section>
+
+  <section>
+    <label for="outShort">שלב 2: הפקודה הקצרה (כשהקובץ otkids-audio.js כבר נמצא ב־$HOME)</label>
     <textarea id="outShort" class="ltr" dir="ltr" readonly rows="4" spellcheck="false" aria-describedby="statusShort"></textarea>
     <div class="meta"><span></span><span id="statusShort" role="status" aria-live="polite"></span></div>
     <button class="btn" id="copyShort" type="button" disabled>העתק את הפקודה הקצרה</button>
@@ -506,6 +514,9 @@ async function copyCmd(outId, statusId) {
 $('modeAll').addEventListener('change', build);
 $('modeTest').addEventListener('change', build);
 $('copy').addEventListener('click', function () { copyCmd('out', 'status'); });
+const CD_CMD = 'cd /var/mobile/Containers/Shared/AppGroup/AD3A26B6-23EE-48B9-96E0-8F14661D28B4/File\\ Provider\\ Storage/*/otkids-main && pwd -P';
+$('outCd').value = CD_CMD;
+$('copyCd').addEventListener('click', function () { copyCmd('outCd', 'statusCd'); });
 $('copyShort').addEventListener('click', function () { copyCmd('outShort', 'statusShort'); });
 build();
 </script>
