@@ -16,6 +16,9 @@ const DELAY_MS = Number(process.env.DELAY_MS || 10000);
 const SET = (process.env.SET || '').trim();
 const OUT_DIR = process.env.OUT_DIR || (SET ? "audio/" + SET : "audio/words");
 const LIMIT = Number(process.env.LIMIT || 0);
+// ONLY=id,id  re-record just these ids (existing files for them are overwritten). FIX='id=text;id=text'  use this text for these ids instead.
+const ONLY = (process.env.ONLY || '').split(',').map((x) => x.trim()).filter(Boolean);
+const FIX = (process.env.FIX || '').split(';').map((x) => x.trim()).filter(Boolean);
 const SITE = process.env.SITE || "https://otkids.vercel.app";
 const SNAPSHOT = [["motos","מטוס"],["mafteach","מפתח"],["melafefon","מלפפון"],["shemesh","שמש"],["shaon","שעון"],["shokolad","שוקולד"],["bayit","בית"],["balon","בלון"],["banana","בננה"],["dag","דג"],["dov","דוב"],["delet","דלת"],["pil","פיל"],["parpar","פרפר"],["pitza","פיצה"],["tapuach","תפוח"],["tut","תות"],["tuki","תוכי"],["kelev","כלב"],["kadur","כדור"],["kova","כובע"],["lev","לב"],["limon","לימון"],["lechem","לחם"],["nachash","נחש"],["naal","נעל"],["ner","נר"],["sus","סוס"],["sefer","ספר"],["sukaria","סוכריה"],["gamal","גמל"],["gezer","גזר"],["glida","גלידה"],["zebra","זברה"],["zvuv","זבוב"],["zeev","זאב"],["chatul","חתול"],["chalav","חלב"],["chalon","חלון"],["rakevet","רכבת"],["robot","רובוט"],["ramzor","רמזור"],["yanshuf","ינשוף"],["yona","יונה"],["yareach","ירח"],["televizya","טלוויזיה"],["traktor","טרקטור"],["tavas","טווס"],["tzav","צב"],["tzfardea","צפרדע"],["tziif","צעיף"],["kof","קוף"],["keshet","קשת"],["kerach","קרח"],["har","הר"],["hamburger","המבורגר"],["hipopotam","היפופוטם"],["vered","ורד"],["wafel","וופל"],["aryeh","אריה"],["arnav","ארנב"],["avatiach","אבטיח"],["anan","ענן"],["achbar","עכבר"],["agala","עגלה"]];
 
@@ -234,8 +237,24 @@ async function main() {
   if (process.argv[2] === 'voices') return listVoices();
   fs.mkdirSync(OUT_DIR, { recursive: true });
   const loaded = await loadWords();
-  const list = LIMIT > 0 ? loaded.words.slice(0, LIMIT) : loaded.words;
+  const known = loaded.words.map((w) => w[0]);
+  const fixes = {};
+  FIX.forEach((part) => {
+    const i = part.indexOf('=');
+    const id = part.slice(0, i).trim();
+    const text = part.slice(i + 1).trim();
+    if (i < 1 || !text) throw new Error('bad FIX entry (use id=text): ' + part);
+    if (known.indexOf(id) < 0) throw new Error('FIX: unknown id "' + id + '"');
+    fixes[id] = text;
+  });
+  ONLY.forEach((id) => { if (known.indexOf(id) < 0) throw new Error('ONLY: unknown id "' + id + '"'); });
+  let words = loaded.words.map((w) => (fixes[w[0]] ? [w[0], fixes[w[0]]] : w));
+  if (ONLY.length) words = words.filter((w) => ONLY.indexOf(w[0]) >= 0);
+  const list = LIMIT > 0 ? words.slice(0, LIMIT) : words;
+  const force = ONLY.length > 0;
   loaded.notes.forEach((n) => console.log('note: ' + n));
+  if (force) console.log('note: ONLY is set, so existing files for these ids are re-recorded: ' + ONLY.join(', '));
+  Object.keys(fixes).forEach((id) => console.log('note: FIX ' + id + ' = ' + fixes[id]));
   console.log('word source: ' + loaded.source);
   console.log('words: ' + list.length + ' | voice: ' + VOICE + ' | model: ' + MODEL + ' | keys: ' + KEYS.length);
   console.log('output: ' + path.resolve(OUT_DIR) + '\n');
@@ -248,7 +267,7 @@ async function main() {
     const text = list[i][1];
     const tag = '[' + (i + 1) + '/' + list.length + ']';
     const file = path.join(OUT_DIR, id + '.wav');
-    if (fs.existsSync(file) && fs.statSync(file).size > 44) { console.log('exists ' + tag + ' ' + id); skipped++; continue; }
+    if (!force && fs.existsSync(file) && fs.statSync(file).size > 44) { console.log('exists ' + tag + ' ' + id); skipped++; continue; }
     if (called && DELAY_MS > 0) await sleep(DELAY_MS);
     called = true;
     const out = await synth(text);
