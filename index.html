@@ -116,6 +116,10 @@
       <label for="modeNums"><span id="numsText">כל המספרים (1–10)</span></label>
       <input type="radio" name="mode" id="modeNumsTest" value="numsTest">
       <label for="modeNumsTest">בדיקה: 3 מספרים</label>
+      <input type="radio" name="mode" id="modeLetters" value="letters">
+      <label for="modeLetters"><span id="lettersText">כל האותיות (22)</span></label>
+      <input type="radio" name="mode" id="modeLettersTest" value="lettersTest">
+      <label for="modeLettersTest">בדיקה: 3 אותיות</label>
     </div>
     <p class="hint">קבצים שכבר קיימים בתיקייה מדולגים, אז אפשר להריץ שוב אחרי כשל.</p>
   </section>
@@ -479,16 +483,19 @@ const TPL = $('tpl').textContent.replace(/^\n/, '');
 const TEST_COUNT = 3;
 const DEFAULT_FOLDER = 'audio/words';
 const NUMBERS_FOLDER = 'audio/numbers';
+const LETTERS_FOLDER = 'audio/letters';
+// The 22 letter names with nikud, in alphabet order. id = letter id in bank.js (LETTERS). [id, text]
+const LETTERS_SET = [["alef","אָלֶף"],["bet","בֵּית"],["gimel","גִּימֶל"],["dalet","דָּלֶת"],["he","הֵא"],["vav","וָו"],["zayin","זַיִן"],["chet","חֵית"],["tet","טֵית"],["yod","יוֹד"],["kaf","כַּף"],["lamed","לָמֶד"],["mem","מֵם"],["nun","נוּן"],["samech","סָמֶךְ"],["ayin","עַיִן"],["pe","פֵּא"],["tsadi","צַדִּי"],["qof","קוֹף"],["resh","רֵישׁ"],["shin","שִׁין"],["tav","תָּו"]];
 // The number words 1-10 with nikud, exactly as written in the numbers game (trace-numbers.js). [id, text]
 const NUMBERS = [["1","אֶחָד"],["2","שְׁנַיִם"],["3","שָׁלוֹשׁ"],["4","אַרְבַּע"],["5","חָמֵשׁ"],["6","שֵׁשׁ"],["7","שֶׁבַע"],["8","שְׁמוֹנֶה"],["9","תֵּשַׁע"],["10","עֶשֶׂר"]];
 
 $('allText').textContent = 'כל ' + WORDS.length + ' המילים';
-let shownNums = null;
-function renderList(isNums) {
-  if (shownNums === isNums) return;
-  shownNums = isNums;
-  const list = isNums ? NUMBERS : WORDS;
-  $('wordsSummary').textContent = list.length + (isNums ? ' המספרים שייכנסו' : ' המילים שייכנסו');
+let shownSet = null;
+function renderList(setName) {
+  if (shownSet === setName) return;
+  shownSet = setName;
+  const list = setName === 'numbers' ? NUMBERS : setName === 'letters' ? LETTERS_SET : WORDS;
+  $('wordsSummary').textContent = list.length + (setName === 'numbers' ? ' המספרים שייכנסו' : setName === 'letters' ? ' שמות האותיות שייכנסו' : ' המילים שייכנסו');
   $('words').innerHTML = list.map(function (w) {
     return '<div class="w"><span>' + w[1] + '</span><code>' + w[0] + '</code></div>';
   }).join('');
@@ -510,15 +517,15 @@ function build() {
   if (parsed.bad) { err.hidden = false; err.textContent = 'יש שורה שלא נראית כמו מפתח (רווח או מרכאות בתוכה), והיא לא נכללה.'; }
   else err.hidden = true;
 
-  const isNums = $('modeNums').checked || $('modeNumsTest').checked;
-  const test = $('modeTest').checked || $('modeNumsTest').checked;
-  const defFolder = isNums ? NUMBERS_FOLDER : DEFAULT_FOLDER;
-  renderList(isNums);
+  const setName = ($('modeNums').checked || $('modeNumsTest').checked) ? 'numbers' : ($('modeLetters').checked || $('modeLettersTest').checked) ? 'letters' : '';
+  const test = $('modeTest').checked || $('modeNumsTest').checked || $('modeLettersTest').checked;
+  const defFolder = setName === 'numbers' ? NUMBERS_FOLDER : setName === 'letters' ? LETTERS_FOLDER : DEFAULT_FOLDER;
+  renderList(setName);
   const delaySec = Number($('delay').value);
   const delayMs = Math.max(0, Math.round((isFinite(delaySec) ? delaySec : 10) * 1000));
   let folder = $('folder').value.trim();
-  // An untouched default follows the chosen set: audio/words for words, audio/numbers for numbers.
-  if (folder === '' || folder === DEFAULT_FOLDER || folder === NUMBERS_FOLDER) { folder = defFolder; $('folder').value = defFolder; }
+  // An untouched default follows the chosen set: audio/words, audio/numbers or audio/letters.
+  if (folder === '' || folder === DEFAULT_FOLDER || folder === NUMBERS_FOLDER || folder === LETTERS_FOLDER) { folder = defFolder; $('folder').value = defFolder; }
   const folderBad = !/^[A-Za-z0-9_.\/-]+$/.test(folder) || folder.indexOf('..') !== -1;
   if (folderBad) folder = defFolder;
   $('folderErr').hidden = !folderBad;
@@ -541,8 +548,8 @@ function build() {
     __OUT__: JSON.stringify(folder),
     __LIMIT__: String(test ? TEST_COUNT : 0),
     __SITE__: JSON.stringify(site),
-    __SET__: JSON.stringify(isNums ? 'numbers' : ''),
-    __SETS__: JSON.stringify({ numbers: NUMBERS }),
+    __SET__: JSON.stringify(setName),
+    __SETS__: JSON.stringify({ numbers: NUMBERS, letters: LETTERS_SET }),
     __WORDS__: JSON.stringify(WORDS)
   };
   let script = TPL;
@@ -557,7 +564,7 @@ function build() {
   $('status').textContent = '';
 
   const parts = ["GEMINI_API_KEY='" + parsed.keys.join(',') + "'"];
-  if (isNums) parts.push('SET=numbers');
+  if (setName) parts.push('SET=' + setName);
   if (test) parts.push('LIMIT=' + TEST_COUNT);
   if (delayMs !== 10000) parts.push('DELAY_MS=' + delayMs);
   if (folder !== defFolder) parts.push("OUT_DIR='" + folder + "'");
@@ -596,6 +603,8 @@ $('modeAll').addEventListener('change', build);
 $('modeTest').addEventListener('change', build);
 $('modeNums').addEventListener('change', build);
 $('modeNumsTest').addEventListener('change', build);
+$('modeLetters').addEventListener('change', build);
+$('modeLettersTest').addEventListener('change', build);
 $('copy').addEventListener('click', function () { copyCmd('out', 'status'); });
 const CD_CMD = 'cd /var/mobile/Containers/Shared/AppGroup/AD3A26B6-23EE-48B9-96E0-8F14661D28B4/File\\ Provider\\ Storage/*/otkids-main && pwd -P';
 $('outCd').value = CD_CMD;
