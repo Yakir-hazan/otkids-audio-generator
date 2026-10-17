@@ -1,5 +1,6 @@
 // otkids-audio.js: one WAV file per word of the otkids bank.js (Gemini TTS). File name = word id.
 // Key comes from the GEMINI_API_KEY env var (several keys: comma separated). Optional env: LIMIT (0 = all), VOICE, MODEL, STYLE (tone, English), DELAY_MS, OUT_DIR, SITE.
+// SET=numbers records the number words 1-10 (with nikud, as written in the numbers game) instead of the bank words; default OUT_DIR becomes audio/<set>.
 // List voices: node otkids-audio.js voices   (VOICE_GENDER=female|male, VOICE_LANG=he-IL, VOICE_SEARCH=warm)
 // Node 16+, no dependencies. Existing files are skipped, so it is safe to run again after a failure.
 'use strict';
@@ -12,7 +13,8 @@ const MODEL = process.env.MODEL || "gemini-3.8-flash-tts";
 const VOICE = process.env.VOICE || "Sulafat";
 const STYLE = process.env.STYLE || "";
 const DELAY_MS = Number(process.env.DELAY_MS || 10000);
-const OUT_DIR = process.env.OUT_DIR || "audio/words";
+const SET = (process.env.SET || '').trim();
+const OUT_DIR = process.env.OUT_DIR || (SET ? "audio/" + SET : "audio/words");
 const LIMIT = Number(process.env.LIMIT || 0);
 const SITE = process.env.SITE || "https://otkids.vercel.app";
 const SNAPSHOT = [["motos","מטוס"],["mafteach","מפתח"],["melafefon","מלפפון"],["shemesh","שמש"],["shaon","שעון"],["shokolad","שוקולד"],["bayit","בית"],["balon","בלון"],["banana","בננה"],["dag","דג"],["dov","דוב"],["delet","דלת"],["pil","פיל"],["parpar","פרפר"],["pitza","פיצה"],["tapuach","תפוח"],["tut","תות"],["tuki","תוכי"],["kelev","כלב"],["kadur","כדור"],["kova","כובע"],["lev","לב"],["limon","לימון"],["lechem","לחם"],["nachash","נחש"],["naal","נעל"],["ner","נר"],["sus","סוס"],["sefer","ספר"],["sukaria","סוכריה"],["gamal","גמל"],["gezer","גזר"],["glida","גלידה"],["zebra","זברה"],["zvuv","זבוב"],["zeev","זאב"],["chatul","חתול"],["chalav","חלב"],["chalon","חלון"],["rakevet","רכבת"],["robot","רובוט"],["ramzor","רמזור"],["yanshuf","ינשוף"],["yona","יונה"],["yareach","ירח"],["televizya","טלוויזיה"],["traktor","טרקטור"],["tavas","טווס"],["tzav","צב"],["tzfardea","צפרדע"],["tziif","צעיף"],["kof","קוף"],["keshet","קשת"],["kerach","קרח"],["har","הר"],["hamburger","המבורגר"],["hipopotam","היפופוטם"],["vered","ורד"],["wafel","וופל"],["aryeh","אריה"],["arnav","ארנב"],["avatiach","אבטיח"],["anan","ענן"],["achbar","עכבר"],["agala","עגלה"]];
@@ -59,8 +61,17 @@ function download(url, redirects) {
   });
 }
 
+// Fixed sets, recorded instead of the bank words when SET=<name> is given. File name = id.
+const SETS = {
+  numbers: [["1","אֶחָד"],["2","שְׁנַיִם"],["3","שָׁלוֹשׁ"],["4","אַרְבַּע"],["5","חָמֵשׁ"],["6","שֵׁשׁ"],["7","שֶׁבַע"],["8","שְׁמוֹנֶה"],["9","תֵּשַׁע"],["10","עֶשֶׂר"]]
+};
+
 async function loadWords() {
   const notes = [];
+  if (SET) {
+    if (!SETS[SET]) throw new Error('unknown SET "' + SET + '" (available: ' + Object.keys(SETS).join(', ') + ')');
+    return { words: SETS[SET], source: 'built-in set "' + SET + '"', notes: notes };
+  }
   const bankPath = path.join(process.cwd(), 'js', 'content', 'bank.js');
   if (fs.existsSync(bankPath)) {
     try { return { words: parseBank(fs.readFileSync(bankPath, 'utf8')), source: 'local file ' + bankPath, notes: notes }; }
