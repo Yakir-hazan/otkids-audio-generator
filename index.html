@@ -112,6 +112,10 @@
       <label for="modeAll"><span id="allText">כל המילים</span></label>
       <input type="radio" name="mode" id="modeTest" value="test">
       <label for="modeTest">בדיקה: 3 מילים</label>
+      <input type="radio" name="mode" id="modeNums" value="nums">
+      <label for="modeNums"><span id="numsText">כל המספרים (1–10)</span></label>
+      <input type="radio" name="mode" id="modeNumsTest" value="numsTest">
+      <label for="modeNumsTest">בדיקה: 3 מספרים</label>
     </div>
     <p class="hint">קבצים שכבר קיימים בתיקייה מדולגים, אז אפשר להריץ שוב אחרי כשל.</p>
   </section>
@@ -213,6 +217,8 @@ const DELAY_MS = __DELAY__;
 const OUT_DIR = __OUT__;
 const LIMIT = __LIMIT__;
 const SITE = __SITE__;
+const SET = __SET__;
+const SETS = __SETS__;
 const SNAPSHOT = __WORDS__;
 
 // Word list: 1) js/content/bank.js in the folder you run this from, 2) the live otkids site, 3) the snapshot above.
@@ -259,6 +265,10 @@ function download(url, redirects) {
 
 async function loadWords() {
   const notes = [];
+  if (SET) {
+    if (!SETS[SET]) throw new Error('unknown set: ' + SET);
+    return { words: SETS[SET], source: 'built-in set "' + SET + '"', notes: notes };
+  }
   const bankPath = path.join(process.cwd(), 'js', 'content', 'bank.js');
   if (fs.existsSync(bankPath)) {
     try { return { words: parseBank(fs.readFileSync(bankPath, 'utf8')), source: 'local file ' + bankPath, notes: notes }; }
@@ -468,12 +478,21 @@ const $ = (id) => document.getElementById(id);
 const TPL = $('tpl').textContent.replace(/^\n/, '');
 const TEST_COUNT = 3;
 const DEFAULT_FOLDER = 'audio/words';
+const NUMBERS_FOLDER = 'audio/numbers';
+// The number words 1-10 with nikud, exactly as written in the numbers game (trace-numbers.js). [id, text]
+const NUMBERS = [["1","אֶחָד"],["2","שְׁנַיִם"],["3","שָׁלוֹשׁ"],["4","אַרְבַּע"],["5","חָמֵשׁ"],["6","שֵׁשׁ"],["7","שֶׁבַע"],["8","שְׁמוֹנֶה"],["9","תֵּשַׁע"],["10","עֶשֶׂר"]];
 
 $('allText').textContent = 'כל ' + WORDS.length + ' המילים';
-$('wordsSummary').textContent = WORDS.length + ' המילים שייכנסו';
-$('words').innerHTML = WORDS.map(function (w) {
-  return '<div class="w"><span>' + w[1] + '</span><code>' + w[0] + '</code></div>';
-}).join('');
+let shownNums = null;
+function renderList(isNums) {
+  if (shownNums === isNums) return;
+  shownNums = isNums;
+  const list = isNums ? NUMBERS : WORDS;
+  $('wordsSummary').textContent = list.length + (isNums ? ' המספרים שייכנסו' : ' המילים שייכנסו');
+  $('words').innerHTML = list.map(function (w) {
+    return '<div class="w"><span>' + w[1] + '</span><code>' + w[0] + '</code></div>';
+  }).join('');
+}
 
 function parseKeys(raw) {
   const keys = [];
@@ -491,14 +510,19 @@ function build() {
   if (parsed.bad) { err.hidden = false; err.textContent = 'יש שורה שלא נראית כמו מפתח (רווח או מרכאות בתוכה), והיא לא נכללה.'; }
   else err.hidden = true;
 
-  const test = $('modeTest').checked;
+  const isNums = $('modeNums').checked || $('modeNumsTest').checked;
+  const test = $('modeTest').checked || $('modeNumsTest').checked;
+  const defFolder = isNums ? NUMBERS_FOLDER : DEFAULT_FOLDER;
+  renderList(isNums);
   const delaySec = Number($('delay').value);
   const delayMs = Math.max(0, Math.round((isFinite(delaySec) ? delaySec : 10) * 1000));
-  let folder = $('folder').value.trim() || DEFAULT_FOLDER;
+  let folder = $('folder').value.trim();
+  // An untouched default follows the chosen set: audio/words for words, audio/numbers for numbers.
+  if (folder === '' || folder === DEFAULT_FOLDER || folder === NUMBERS_FOLDER) { folder = defFolder; $('folder').value = defFolder; }
   const folderBad = !/^[A-Za-z0-9_.\/-]+$/.test(folder) || folder.indexOf('..') !== -1;
-  if (folderBad) folder = DEFAULT_FOLDER;
+  if (folderBad) folder = defFolder;
   $('folderErr').hidden = !folderBad;
-  if (folderBad) $('folderErr').textContent = 'שם התיקייה יכול להכיל רק אותיות באנגלית, ספרות, קו תחתון, נקודה וקו נטוי. משתמש ב־' + DEFAULT_FOLDER + '.';
+  if (folderBad) $('folderErr').textContent = 'שם התיקייה יכול להכיל רק אותיות באנגלית, ספרות, קו תחתון, נקודה וקו נטוי. משתמש ב־' + defFolder + '.';
   const voice = $('voice').value.trim() || 'Sulafat';
   const model = $('model').value.trim() || 'gemini-3.8-flash-tts';
   const style = $('style').value.trim();
@@ -517,6 +541,8 @@ function build() {
     __OUT__: JSON.stringify(folder),
     __LIMIT__: String(test ? TEST_COUNT : 0),
     __SITE__: JSON.stringify(site),
+    __SET__: JSON.stringify(isNums ? 'numbers' : ''),
+    __SETS__: JSON.stringify({ numbers: NUMBERS }),
     __WORDS__: JSON.stringify(WORDS)
   };
   let script = TPL;
@@ -531,9 +557,10 @@ function build() {
   $('status').textContent = '';
 
   const parts = ["GEMINI_API_KEY='" + parsed.keys.join(',') + "'"];
+  if (isNums) parts.push('SET=numbers');
   if (test) parts.push('LIMIT=' + TEST_COUNT);
   if (delayMs !== 10000) parts.push('DELAY_MS=' + delayMs);
-  if (folder !== DEFAULT_FOLDER) parts.push("OUT_DIR='" + folder + "'");
+  if (folder !== defFolder) parts.push("OUT_DIR='" + folder + "'");
   if (voice !== 'Sulafat' && /^[A-Za-z0-9_.:-]+$/.test(voice)) parts.push("VOICE='" + voice + "'");
   if (model !== 'gemini-3.8-flash-tts' && /^[A-Za-z0-9_.:-]+$/.test(model)) parts.push("MODEL='" + model + "'");
   if (site && site !== 'https://otkids.vercel.app') parts.push("SITE='" + site + "'");
@@ -567,6 +594,8 @@ async function copyCmd(outId, statusId) {
 ['keys', 'voice', 'model', 'delay', 'folder', 'site', 'style'].forEach(function (id) { $(id).addEventListener('input', build); });
 $('modeAll').addEventListener('change', build);
 $('modeTest').addEventListener('change', build);
+$('modeNums').addEventListener('change', build);
+$('modeNumsTest').addEventListener('change', build);
 $('copy').addEventListener('click', function () { copyCmd('out', 'status'); });
 const CD_CMD = 'cd /var/mobile/Containers/Shared/AppGroup/AD3A26B6-23EE-48B9-96E0-8F14661D28B4/File\\ Provider\\ Storage/*/otkids-main && pwd -P';
 $('outCd').value = CD_CMD;
