@@ -1,6 +1,6 @@
 // otkids-audio.js: one WAV file per word of the otkids bank.js (Gemini TTS). File name = word id.
 // Key comes from the GEMINI_API_KEY env var (several keys: comma separated). Optional env: LIMIT (0 = all), VOICE, MODEL, STYLE (tone, English), DELAY_MS, OUT_DIR, SITE.
-// SET=numbers records the number words 1-10 (with nikud, as written in the numbers game) instead of the bank words; default OUT_DIR becomes audio/<set>.
+// SET=numbers records the number words 1-10 (with nikud, as written in the numbers game); SET=letters records the 22 letter names (with nikud, file = letter id from bank.js). Both replace the bank words; default OUT_DIR becomes audio/<set>.
 // List voices: node otkids-audio.js voices   (VOICE_GENDER=female|male, VOICE_LANG=he-IL, VOICE_SEARCH=warm)
 // Node 16+, no dependencies. Existing files are skipped, so it is safe to run again after a failure.
 'use strict';
@@ -63,7 +63,8 @@ function download(url, redirects) {
 
 // Fixed sets, recorded instead of the bank words when SET=<name> is given. File name = id.
 const SETS = {
-  numbers: [["1","אֶחָד"],["2","שְׁנַיִם"],["3","שָׁלוֹשׁ"],["4","אַרְבַּע"],["5","חָמֵשׁ"],["6","שֵׁשׁ"],["7","שֶׁבַע"],["8","שְׁמוֹנֶה"],["9","תֵּשַׁע"],["10","עֶשֶׂר"]]
+  numbers: [["1","אֶחָד"],["2","שְׁנַיִם"],["3","שָׁלוֹשׁ"],["4","אַרְבַּע"],["5","חָמֵשׁ"],["6","שֵׁשׁ"],["7","שֶׁבַע"],["8","שְׁמוֹנֶה"],["9","תֵּשַׁע"],["10","עֶשֶׂר"]],
+  letters: [["alef","אָלֶף"],["bet","בֵּית"],["gimel","גִּימֶל"],["dalet","דָּלֶת"],["he","הֵא"],["vav","וָו"],["zayin","זַיִן"],["chet","חֵית"],["tet","טֵית"],["yod","יוֹד"],["kaf","כַּף"],["lamed","לָמֶד"],["mem","מֵם"],["nun","נוּן"],["samech","סָמֶךְ"],["ayin","עַיִן"],["pe","פֵּא"],["tsadi","צַדִּי"],["qof","קוֹף"],["resh","רֵישׁ"],["shin","שִׁין"],["tav","תָּו"]]
 };
 
 async function loadWords() {
