@@ -58,12 +58,15 @@ GEMINI_API_KEY='המפתח' node "$HOME/otkids-audio.js"
 - קולות נשיים מובנים: `Sulafat`, `Vindemiatrix`, `Leda`, `Aoede`, `Zephyr`.
 - להצגת הקולות הזמינים (ספריית הקולות): `GEMINI_API_KEY='...' node "$HOME/otkids-audio.js" voices`. אפשר לסנן: `VOICE_GENDER=female VOICE_LANG=he-IL VOICE_SEARCH=warm`.
 
-## קבוצות קבועות: `SET=numbers`
+## קבוצות קבועות: `SET=numbers`, `SET=letters`
 
-כדי להקליט רק את מילות המספרים 1–10 (עם הניקוד שכתוב במשחק המספרים) ולא את מילות הבנק:
+כדי להקליט רק קבוצה קבועה ולא את מילות הבנק:
+
+- `SET=numbers`: מילות המספרים 1–10 (עם הניקוד שכתוב במשחק המספרים). הקבצים: `1.wav` עד `10.wav` בתיקייה `audio/numbers`.
+- `SET=letters`: שמות 22 האותיות (עם ניקוד, בסדר האלפבית). שם הקובץ הוא ה-id של האות מ-`bank.js` (`alef.wav`, `bet.wav`...) בתיקייה `audio/letters`.
 
 ```
-GEMINI_API_KEY='המפתח' SET=numbers node "$HOME/otkids-audio.js"
+GEMINI_API_KEY='המפתח' SET=letters node "$HOME/otkids-audio.js"
 ```
 
-הקבצים נשמרים כ-`1.wav` עד `10.wav` בתיקייה `audio/numbers` (אפשר לשנות עם `OUT_DIR`). לבדיקה אפשר להוסיף `LIMIT=3`. בלי `SET` הסקריפט מקליט את מילות הבנק כרגיל.
+אפשר לשנות את התיקייה עם `OUT_DIR`, ולהוסיף `LIMIT=3` לבדיקה. בלי `SET` הסקריפט מקליט את מילות הבנק כרגיל. בדף הכלי יש לכל קבוצה אפשרות משלה ב"מה להפיק".
