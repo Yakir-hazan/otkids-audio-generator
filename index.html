@@ -156,6 +156,16 @@
           <label for="style">טון הקראה, באנגלית (אפשר להשאיר ריק). לדוגמה: warm and cheerful, like a kind kindergarten teacher, slow and clear</label>
           <input type="text" id="style" class="ltr" dir="ltr" value="" autocomplete="off" spellcheck="false">
         </div>
+        <div class="field wide">
+          <label for="only">רק אלה (לתיקון): מזהים מופרדים בפסיק, למשל vav,tav. הקבצים שלהם יוקלטו מחדש גם אם כבר קיימים. ריק = הכול</label>
+          <input type="text" id="only" class="ltr" dir="ltr" value="" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
+          <p class="err" id="onlyErr" hidden></p>
+        </div>
+        <div class="field wide">
+          <label for="fix">החלפת טקסט להקלטה: מזהה=טקסט, מופרדים בנקודה-פסיק, למשל vav=וו;tav=תו. ריק = בלי החלפה</label>
+          <input type="text" id="fix" dir="auto" value="" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
+          <p class="err" id="fixErr" hidden></p>
+        </div>
       </div>
     </details>
   </section>
@@ -223,6 +233,8 @@ const LIMIT = __LIMIT__;
 const SITE = __SITE__;
 const SET = __SET__;
 const SETS = __SETS__;
+const ONLY = __ONLY__;
+const FIX = __FIX__;
 const SNAPSHOT = __WORDS__;
 
 // Word list: 1) js/content/bank.js in the folder you run this from, 2) the live otkids site, 3) the snapshot above.
@@ -434,8 +446,16 @@ async function main() {
   if (process.argv[2] === 'voices') return listVoices();
   fs.mkdirSync(OUT_DIR, { recursive: true });
   const loaded = await loadWords();
-  const list = LIMIT > 0 ? loaded.words.slice(0, LIMIT) : loaded.words;
+  const known = loaded.words.map((w) => w[0]);
+  Object.keys(FIX).forEach((id) => { if (known.indexOf(id) < 0) throw new Error('FIX: unknown id "' + id + '"'); });
+  ONLY.forEach((id) => { if (known.indexOf(id) < 0) throw new Error('ONLY: unknown id "' + id + '"'); });
+  let words = loaded.words.map((w) => (FIX[w[0]] ? [w[0], FIX[w[0]]] : w));
+  if (ONLY.length) words = words.filter((w) => ONLY.indexOf(w[0]) >= 0);
+  const list = LIMIT > 0 ? words.slice(0, LIMIT) : words;
+  const force = ONLY.length > 0;
   loaded.notes.forEach((n) => console.log('note: ' + n));
+  if (force) console.log('note: ONLY is set, so existing files for these ids are re-recorded: ' + ONLY.join(', '));
+  Object.keys(FIX).forEach((id) => console.log('note: FIX ' + id + ' = ' + FIX[id]));
   console.log('word source: ' + loaded.source);
   console.log('words: ' + list.length + ' | voice: ' + VOICE + ' | model: ' + MODEL + ' | keys: ' + KEYS.length);
   console.log('output: ' + path.resolve(OUT_DIR) + '\n');
@@ -448,7 +468,7 @@ async function main() {
     const text = list[i][1];
     const tag = '[' + (i + 1) + '/' + list.length + ']';
     const file = path.join(OUT_DIR, id + '.wav');
-    if (fs.existsSync(file) && fs.statSync(file).size > 44) { console.log('exists ' + tag + ' ' + id); skipped++; continue; }
+    if (!force && fs.existsSync(file) && fs.statSync(file).size > 44) { console.log('exists ' + tag + ' ' + id); skipped++; continue; }
     if (called && DELAY_MS > 0) await sleep(DELAY_MS);
     called = true;
     const out = await synth(text);
@@ -533,6 +553,27 @@ function build() {
   const voice = $('voice').value.trim() || 'Sulafat';
   const model = $('model').value.trim() || 'gemini-3.8-flash-tts';
   const style = $('style').value.trim();
+  const onlyRaw = $('only').value.trim();
+  const onlyIds = onlyRaw === '' ? [] : onlyRaw.split(/[,\s]+/).filter(Boolean);
+  const onlyBad = onlyIds.some(function (x) { return !/^[A-Za-z0-9_-]+$/.test(x); });
+  $('onlyErr').hidden = !onlyBad;
+  if (onlyBad) $('onlyErr').textContent = 'מזהים יכולים להכיל רק אותיות באנגלית, ספרות, מקף וקו תחתון, מופרדים בפסיק. השדה מתעלם עד שיתוקן.';
+  const only = onlyBad ? [] : onlyIds;
+  const fixRaw = $('fix').value.trim();
+  const fixMap = {};
+  let fixBad = false;
+  if (fixRaw !== '') {
+    fixRaw.split(';').map(function (x) { return x.trim(); }).filter(Boolean).forEach(function (part) {
+      const k = part.indexOf('=');
+      const id = k > 0 ? part.slice(0, k).trim() : '';
+      const text = k > 0 ? part.slice(k + 1).trim() : '';
+      if (!/^[A-Za-z0-9_-]+$/.test(id) || text === '' || /['\\$`\n]/.test(text)) { fixBad = true; return; }
+      fixMap[id] = text;
+    });
+  }
+  $('fixErr').hidden = !fixBad;
+  if (fixBad) $('fixErr').textContent = 'הפורמט הוא מזהה=טקסט;מזהה=טקסט. המזהה באנגלית, והטקסט לא יכול להכיל גרש, לוכסן הפוך או $. השדה מתעלם עד שיתוקן.';
+  const fix = fixBad ? {} : fixMap;
   let site = $('site').value.trim();
   const siteBad = site !== '' && !/^https:\/\/[A-Za-z0-9.-]+(:\d+)?(\/[A-Za-z0-9._~\/-]*)?$/.test(site);
   if (siteBad) site = '';
@@ -550,6 +591,8 @@ function build() {
     __SITE__: JSON.stringify(site),
     __SET__: JSON.stringify(setName),
     __SETS__: JSON.stringify({ numbers: NUMBERS, letters: LETTERS_SET }),
+    __ONLY__: JSON.stringify(only),
+    __FIX__: JSON.stringify(fix),
     __WORDS__: JSON.stringify(WORDS)
   };
   let script = TPL;
@@ -565,6 +608,8 @@ function build() {
 
   const parts = ["GEMINI_API_KEY='" + parsed.keys.join(',') + "'"];
   if (setName) parts.push('SET=' + setName);
+  if (only.length) parts.push("ONLY='" + only.join(',') + "'");
+  if (Object.keys(fix).length) parts.push("FIX='" + Object.keys(fix).map(function (k) { return k + '=' + fix[k]; }).join(';') + "'");
   if (test) parts.push('LIMIT=' + TEST_COUNT);
   if (delayMs !== 10000) parts.push('DELAY_MS=' + delayMs);
   if (folder !== defFolder) parts.push("OUT_DIR='" + folder + "'");
@@ -598,7 +643,7 @@ async function copyCmd(outId, statusId) {
   $(statusId).textContent = done ? 'הועתק' : 'ההעתקה נחסמה. הטקסט מסומן, לחץ עליו והעתק ידנית.';
 }
 
-['keys', 'voice', 'model', 'delay', 'folder', 'site', 'style'].forEach(function (id) { $(id).addEventListener('input', build); });
+['keys', 'voice', 'model', 'delay', 'folder', 'site', 'style', 'only', 'fix'].forEach(function (id) { $(id).addEventListener('input', build); });
 $('modeAll').addEventListener('change', build);
 $('modeTest').addEventListener('change', build);
 $('modeNums').addEventListener('change', build);
