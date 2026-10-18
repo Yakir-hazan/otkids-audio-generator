@@ -228,10 +228,17 @@ const MODEL = __MODEL__;
 const VOICE = __VOICE__;
 const STYLE = __STYLE__;
 const DELAY_MS = __DELAY__;
-const OUT_DIR = __OUT__;
 const LIMIT = __LIMIT__;
 const SITE = __SITE__;
 const SET = __SET__;
+// Default output folder: when you run from the project folder and it already has assets/audio/<set> (the real place
+// the app reads from), write there, so existing files are found and skipped. Otherwise audio/<set> (new folder).
+function defaultOutDir(set) {
+  const name = set || 'words';
+  const inProject = path.join('assets', 'audio', name);
+  return fs.existsSync(path.join(process.cwd(), inProject)) ? inProject.split(path.sep).join('/') : 'audio/' + name;
+}
+const OUT_DIR = __OUT__ || defaultOutDir(SET);
 const SETS = __SETS__;
 const ONLY = __ONLY__;
 const FIX = __FIX__;
@@ -595,7 +602,7 @@ function build() {
     __VOICE__: JSON.stringify(voice),
     __STYLE__: JSON.stringify(style),
     __DELAY__: String(delayMs),
-    __OUT__: JSON.stringify(folder),
+    __OUT__: JSON.stringify(folder === defFolder ? '' : folder),
     __LIMIT__: String(test ? TEST_COUNT : 0),
     __SITE__: JSON.stringify(site),
     __SET__: JSON.stringify(setName),

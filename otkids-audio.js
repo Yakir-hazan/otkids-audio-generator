@@ -14,7 +14,14 @@ const VOICE = process.env.VOICE || "Sulafat";
 const STYLE = process.env.STYLE || "";
 const DELAY_MS = Number(process.env.DELAY_MS || 10000);
 const SET = (process.env.SET || '').trim();
-const OUT_DIR = process.env.OUT_DIR || (SET ? "audio/" + SET : "audio/words");
+// Default output folder: when you run from the project folder and it already has assets/audio/<set> (the real place
+// the app reads from), write there, so existing files are found and skipped. Otherwise audio/<set> (new folder).
+function defaultOutDir(set) {
+  const name = set || 'words';
+  const inProject = path.join('assets', 'audio', name);
+  return fs.existsSync(path.join(process.cwd(), inProject)) ? inProject.split(path.sep).join('/') : 'audio/' + name;
+}
+const OUT_DIR = process.env.OUT_DIR || defaultOutDir(SET);
 const LIMIT = Number(process.env.LIMIT || 0);
 // ONLY=id,id  re-record just these ids (existing files for them are overwritten). FIX='id=text;id=text'  use this text for these ids instead.
 const ONLY = (process.env.ONLY || '').split(',').map((x) => x.trim()).filter(Boolean);
