@@ -70,6 +70,15 @@ const SETS = {
   letters: [["alef","אָלֶף"],["bet","בֵּית"],["gimel","גִּימֶל"],["dalet","דָּלֶת"],["he","הֵא"],["vav","וָו"],["zayin","זַיִן"],["chet","חֵית"],["tet","טֵית"],["yod","יוֹד"],["kaf","כַּף"],["lamed","לָמֶד"],["mem","מֵם"],["nun","נוּן"],["samech","סָמֶךְ"],["ayin","עַיִן"],["pe","פֵּא"],["tsadi","צַדִּי"],["qof","קוֹף"],["resh","רֵישׁ"],["shin","שִׁין"],["tav","תָּו"]]
 };
 
+// Animal names that listen-animal says after a correct answer (assets/audio/words/<id>.wav). They live in
+// animal-questions.js, not in bank.js, so they are added here to the bank words (an id already in the list is not added twice).
+const EXTRA_WORDS = [["chazir","חזיר"],["para","פרה"],["tarnegol","תרנגול"]];
+function withExtras(words) {
+  const have = {};
+  words.forEach((w) => { have[w[0]] = 1; });
+  return words.concat(EXTRA_WORDS.filter((w) => !have[w[0]]));
+}
+
 async function loadWords() {
   const notes = [];
   if (SET) {
@@ -78,15 +87,15 @@ async function loadWords() {
   }
   const bankPath = path.join(process.cwd(), 'js', 'content', 'bank.js');
   if (fs.existsSync(bankPath)) {
-    try { return { words: parseBank(fs.readFileSync(bankPath, 'utf8')), source: 'local file ' + bankPath, notes: notes }; }
+    try { return { words: withExtras(parseBank(fs.readFileSync(bankPath, 'utf8'))), source: 'local file ' + bankPath, notes: notes }; }
     catch (e) { notes.push('local bank.js not usable: ' + e.message); }
   }
   if (SITE) {
     const url = SITE.replace(/\/+$/, '') + '/js/content/bank.js';
-    try { return { words: parseBank(await download(url, 0)), source: 'live site ' + url, notes: notes }; }
+    try { return { words: withExtras(parseBank(await download(url, 0))), source: 'live site ' + url, notes: notes }; }
     catch (e) { notes.push('could not use ' + url + ': ' + e.message); }
   }
-  return { words: SNAPSHOT, source: 'embedded snapshot (may be out of date)', notes: notes };
+  return { words: withExtras(SNAPSHOT), source: 'embedded snapshot (may be out of date)', notes: notes };
 }
 
 const NEW_API = !/gemini-(2\.5|3\.1)/.test(MODEL);

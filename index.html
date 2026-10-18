@@ -279,6 +279,15 @@ function download(url, redirects) {
   });
 }
 
+// Animal names that listen-animal says after a correct answer (assets/audio/words/<id>.wav). They live in
+// animal-questions.js, not in bank.js, so they are added here to the bank words (an id already in the list is not added twice).
+const EXTRA_WORDS = [["chazir","חזיר"],["para","פרה"],["tarnegol","תרנגול"]];
+function withExtras(words) {
+  const have = {};
+  words.forEach((w) => { have[w[0]] = 1; });
+  return words.concat(EXTRA_WORDS.filter((w) => !have[w[0]]));
+}
+
 async function loadWords() {
   const notes = [];
   if (SET) {
@@ -287,15 +296,15 @@ async function loadWords() {
   }
   const bankPath = path.join(process.cwd(), 'js', 'content', 'bank.js');
   if (fs.existsSync(bankPath)) {
-    try { return { words: parseBank(fs.readFileSync(bankPath, 'utf8')), source: 'local file ' + bankPath, notes: notes }; }
+    try { return { words: withExtras(parseBank(fs.readFileSync(bankPath, 'utf8'))), source: 'local file ' + bankPath, notes: notes }; }
     catch (e) { notes.push('local bank.js not usable: ' + e.message); }
   }
   if (SITE) {
     const url = SITE.replace(/\/+$/, '') + '/js/content/bank.js';
-    try { return { words: parseBank(await download(url, 0)), source: 'live site ' + url, notes: notes }; }
+    try { return { words: withExtras(parseBank(await download(url, 0))), source: 'live site ' + url, notes: notes }; }
     catch (e) { notes.push('could not use ' + url + ': ' + e.message); }
   }
-  return { words: SNAPSHOT, source: 'embedded snapshot (may be out of date)', notes: notes };
+  return { words: withExtras(SNAPSHOT), source: 'embedded snapshot (may be out of date)', notes: notes };
 }
 
 const NEW_API = !/gemini-(2\.5|3\.1)/.test(MODEL);
@@ -497,7 +506,7 @@ main().then((c) => process.exit(c)).catch((e) => { console.error('Fatal: ' + e.m
 
 <script>
 // Snapshot of WORDS from js/content/bank.js in the otkids repo (main branch). [id, text]. Used by the generated script only when bank.js is not found.
-const WORDS = [["motos","מטוס"],["mafteach","מפתח"],["melafefon","מלפפון"],["shemesh","שמש"],["shaon","שעון"],["shokolad","שוקולד"],["bayit","בית"],["balon","בלון"],["banana","בננה"],["dag","דג"],["dov","דוב"],["delet","דלת"],["pil","פיל"],["parpar","פרפר"],["pitza","פיצה"],["tapuach","תפוח"],["tut","תות"],["tuki","תוכי"],["kelev","כלב"],["kadur","כדור"],["kova","כובע"],["lev","לב"],["limon","לימון"],["lechem","לחם"],["nachash","נחש"],["naal","נעל"],["ner","נר"],["sus","סוס"],["sefer","ספר"],["sukaria","סוכריה"],["gamal","גמל"],["gezer","גזר"],["glida","גלידה"],["zebra","זברה"],["zvuv","זבוב"],["zeev","זאב"],["chatul","חתול"],["chalav","חלב"],["chalon","חלון"],["rakevet","רכבת"],["robot","רובוט"],["ramzor","רמזור"],["yanshuf","ינשוף"],["yona","יונה"],["yareach","ירח"],["televizya","טלוויזיה"],["traktor","טרקטור"],["tavas","טווס"],["tzav","צב"],["tzfardea","צפרדע"],["tziif","צעיף"],["kof","קוף"],["keshet","קשת"],["kerach","קרח"],["har","הר"],["hamburger","המבורגר"],["hipopotam","היפופוטם"],["vered","ורד"],["wafel","וופל"],["aryeh","אריה"],["arnav","ארנב"],["avatiach","אבטיח"],["anan","ענן"],["achbar","עכבר"],["agala","עגלה"]];
+const WORDS = [["motos","מטוס"],["mafteach","מפתח"],["melafefon","מלפפון"],["shemesh","שמש"],["shaon","שעון"],["shokolad","שוקולד"],["bayit","בית"],["balon","בלון"],["banana","בננה"],["dag","דג"],["dov","דוב"],["delet","דלת"],["pil","פיל"],["parpar","פרפר"],["pitza","פיצה"],["tapuach","תפוח"],["tut","תות"],["tuki","תוכי"],["kelev","כלב"],["kadur","כדור"],["kova","כובע"],["lev","לב"],["limon","לימון"],["lechem","לחם"],["nachash","נחש"],["naal","נעל"],["ner","נר"],["sus","סוס"],["sefer","ספר"],["sukaria","סוכריה"],["gamal","גמל"],["gezer","גזר"],["glida","גלידה"],["zebra","זברה"],["zvuv","זבוב"],["zeev","זאב"],["chatul","חתול"],["chalav","חלב"],["chalon","חלון"],["rakevet","רכבת"],["robot","רובוט"],["ramzor","רמזור"],["yanshuf","ינשוף"],["yona","יונה"],["yareach","ירח"],["televizya","טלוויזיה"],["traktor","טרקטור"],["tavas","טווס"],["tzav","צב"],["tzfardea","צפרדע"],["tziif","צעיף"],["kof","קוף"],["keshet","קשת"],["kerach","קרח"],["har","הר"],["hamburger","המבורגר"],["hipopotam","היפופוטם"],["vered","ורד"],["wafel","וופל"],["aryeh","אריה"],["arnav","ארנב"],["avatiach","אבטיח"],["anan","ענן"],["achbar","עכבר"],["agala","עגלה"],["chazir","חזיר"],["para","פרה"],["tarnegol","תרנגול"]];
 const $ = (id) => document.getElementById(id);
 const TPL = $('tpl').textContent.replace(/^\n/, '');
 const TEST_COUNT = 3;
